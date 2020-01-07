@@ -192,9 +192,10 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
       distvec = zeros(Float64, ABCsetup.maxiterations)
       i = Atomic{Int64}(0)
       its = Atomic{Int64}(0)
+      zero_prior = Atomic{Int64}(0)
 
       @threads for ii = 1:ABCsetup.maxiterations
-
+        next!(p)
         if i[] > ABCsetup.nparticles
           @info "Number of particles reached"
           break
