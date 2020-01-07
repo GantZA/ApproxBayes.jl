@@ -161,6 +161,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
   particles = Array{ParticleSMC}(undef, ABCsetup.nparticles) #define particles array
 
   if verbose
+    show(ABCrejresults)
     println("Running ABC SMC... \n")
   end
 
