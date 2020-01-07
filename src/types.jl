@@ -93,6 +93,7 @@ mutable struct ABCSMC <: ABCtype
   nparticles::Int64
   constants::Array{Any,1}
   maxiterations::Int64
+  maxpop::Int64
   prior::Prior
   α::Float64
   convergence::Float64
@@ -100,6 +101,7 @@ mutable struct ABCSMC <: ABCtype
 
   ABCSMC(sim_func::Function, nparams::Int64, ϵT::Float64, prior::Prior;
     maxiterations = 10^5,
+    maxpop = 3,
     constants = [],
     nparticles = 100,
     α = 0.3,
@@ -107,7 +109,7 @@ mutable struct ABCSMC <: ABCtype
     convergence = 0.05,
     kernel = ApproxBayes.uniformkernel
     ) =
-  new(sim_func, nparams, ϵ1, ϵT, nparticles, constants, maxiterations, prior, α, convergence, kernel)
+  new(sim_func, nparams, ϵ1, ϵT, nparticles, constants, maxiterations, maxpop, prior, α, convergence, kernel)
 
 end
 

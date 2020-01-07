@@ -152,7 +152,8 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
                   constants = ABCsetup.constants), targetdata,
                   progress = progress, parallel = parallel);
 
-  oldparticles, weights = setupSMCparticles(ABCrejresults, ABCsetup)
+  allparticles = Array{ParticleSMC}(undef, ABCsetup.nparticles, ABCsetup.maxpop)
+  allparticles[:, 1], weights = setupSMCparticles(ABCrejresults, ABCsetup)
   ABCsetup.kernel.kernel_parameters = (maximum(ABCrejresults.parameters, dims = 1) - minimum(ABCrejresults.parameters, dims = 1) ./2)[:]
   ϵ = quantile(ABCrejresults.dist, ABCsetup.α) # set new ϵ to αth quantile
   ϵvec = [ϵ] #store epsilon values
@@ -177,10 +178,10 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
       return ABCrejresults
   end
 
-  while (ϵ > ABCsetup.ϵT) & (sum(numsims) < ABCsetup.maxiterations)
+  while (popnum < ABCsetup.maxpop) & (ϵ > ABCsetup.ϵT) & (sum(numsims) < ABCsetup.maxiterations)
 
     if progress
-      p = Progress(ABCsetup.nparticles, 1, "ABC SMC population $(popnum), new ϵ: $(round(ϵ, digits = 2))...", 30)
+      p = Progress(ABCsetup.maxiterations, 1, "ABC SMC population $(popnum), new ϵ: $(round(ϵ, digits = 2))...", 30)
     end
 
     if parallel
@@ -194,11 +195,12 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
       @threads for ii = 1:ABCsetup.maxiterations
 
         if i[] > ABCsetup.nparticles
+          @info "Number of particles reached"
           break
         end
 
         j = wsample(1:ABCsetup.nparticles, weights)
-        particle = oldparticles[j]
+        particle = allparticles[j, popnum]
         newparticle = perturbparticle(particle, ABCsetup.kernel)
         priorp = priorprob(newparticle.params, ABCsetup.prior)
         if priorp == 0.0 #return to beginning of loop if prior probability is 0
@@ -222,9 +224,21 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
 
       # Remove particles that are still #undef and corresponding distances
       idx = [isassigned(particles,ii) for ii in eachindex(particles)]
-      particles = particles[idx][1:ABCsetup.nparticles]
-      distvec = distvec[idx][1:ABCsetup.nparticles]
+      particles = particles[idx]
+      distvec = distvec[idx]
       its = its[]
+      num_accepted = size(particles, 1)
+      if num_accepted < ABCsetup.nparticles
+        acceptance_rate = round(num_accepted/its, digits=4)
+        @warn "Only accepted $num_accepted particles out of $its simulations with ϵ < $ϵ at an acceptance rate of $acceptance_rate. \n\tYou may want to increase ϵ or increase maxiterations. \n\t Stopping ABC at previous population"
+        allparticles = allparticles[:, 1:popnum]
+        out = ABCSMCresults(allparticles[:, popnum], numsims, ABCsetup, ϵvec)
+        return out, allparticles, ABCrejresults
+      else
+        allparticles[:, popnum + 1] = particles[1:ABCsetup.nparticles]
+        distvec = distvec[1:ABCsetup.nparticles]
+      end
+
 
     else
       particles = Array{ParticleSMC}(undef, ABCsetup.nparticles)
@@ -260,9 +274,9 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
       end
     end
 
-    particles, weights = smcweights(particles, oldparticles, ABCsetup.prior, ABCsetup.kernel)
-    ABCsetup.kernel.kernel_parameters = ABCsetup.kernel.calculate_kernel_parameters(particles)
-    oldparticles = particles
+    allparticles[:, popnum + 1], weights = smcweights(allparticles[:, popnum + 1], allparticles[:, popnum], ABCsetup.prior, ABCsetup.kernel)
+    @warn "Kernel Perturbation Scales recalculated"
+    ABCsetup.kernel.kernel_parameters = ABCsetup.kernel.calculate_kernel_parameters(allparticles[:, popnum + 1])
 
     if finalpop == true
       break
@@ -293,7 +307,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
 
     if verbose
       println("##################################################")
-      show(ABCSMCresults(particles, numsims, ABCsetup, ϵvec))
+      show(ABCSMCresults(allparticles[:, popnum], numsims, ABCsetup, ϵvec))
       println("##################################################\n")
     end
   end
@@ -303,8 +317,14 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
     end
   end
 
-  out = ABCSMCresults(particles, numsims, ABCsetup, ϵvec)
-  return out
+  if popnum == ABCsetup.maxpop
+    if verbose
+      println("\nReached maxpop=$(ABCsetup.maxpop), stop ABC SMC\n")
+    end
+  end
+
+  out = ABCSMCresults(allparticles[:, end], numsims, ABCsetup, ϵvec)
+  return out, allparticles, ABCrejresults
 end
 
 """
