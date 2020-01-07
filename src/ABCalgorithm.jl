@@ -235,7 +235,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
         @warn "Only accepted $num_accepted particles out of $its simulations with ϵ < $ϵ at an acceptance rate of $acceptance_rate. \n\tYou may want to increase ϵ or increase maxiterations. \n\t Stopping ABC at previous population"
         allparticles = allparticles[:, 1:popnum]
         out = ABCSMCresults(allparticles[:, popnum], numsims, ABCsetup, ϵvec)
-        return out, allparticles, ABCrejresults
+        return out, allparticles
       else
         allparticles[:, popnum + 1] = particles[1:ABCsetup.nparticles]
         distvec = distvec[1:ABCsetup.nparticles]
@@ -326,7 +326,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
   end
 
   out = ABCSMCresults(allparticles[:, end], numsims, ABCsetup, ϵvec)
-  return out, allparticles, ABCrejresults
+  return out, allparticles
 end
 
 """
