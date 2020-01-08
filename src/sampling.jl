@@ -14,14 +14,18 @@ end
   newparams[i] = rand(x)
 end
 
-function perturbparticle(particle, kernel::Kernel)
+function perturbparticle(particle, kernel::Kernel, prior::Prior)
   newparticle = copyparticle(particle)
   newparams = zeros(Float64, length(newparticle.params))
   for i in 1:length(newparams)
-    newparams[i] = kernel.perturbation_function(newparticle.params[i], kernel.kernel_parameters[i])
+    newparams[i] = kernel.perturbation_function(newparticle.params[i], kernel.kernel_parameters[i], prior.distribution[i])
   end
   newparticle.params = newparams
   return newparticle
+end
+
+function perturbparticles(particles, kernel::Kernel, prior::Prior)
+  return map(x -> perturbparticle(x, kernel, prior), particles)
 end
 
 function perturbmodel(ABCsetup, mstar, modelprob)

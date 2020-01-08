@@ -31,7 +31,11 @@ mutable struct Kernel
     [])
 end
 
-perturbation_function(prevparameter, scale) = rand(Uniform(prevparameter - scale, prevparameter + scale))
+function perturbation_function(prevparameter, scale, prior_dist)
+    ub = min(prior_dist.b, prevparameter + scale)
+    lb = max(prior_dist.a, prevparameter - scale)
+    return rand(Uniform(lb, ub))
+end
 
 pdf_function(newparticle, prevparticle, scales, i) = pdf(Uniform(prevparticle.params[i] - scales[i], prevparticle.params[i] + scales[i]), newparticle.params[i])
 function calculate_kernel_parameters(particles)

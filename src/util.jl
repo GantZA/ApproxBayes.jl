@@ -61,7 +61,7 @@ function setupSMCparticles(ABCrejresults::ABCrejectionmodelresults, ABCsetup)
   return particles, weights
 end
 
-function show(io::IO, ABCresults::ABCrejectionresults)
+function show(ABCresults::ABCrejectionresults)
 
   upperci = zeros(Float64, size(ABCresults.parameters, 2))
   lowerci = zeros(Float64, size(ABCresults.parameters, 2))
@@ -83,7 +83,7 @@ function show(io::IO, ABCresults::ABCrejectionresults)
   end
 end
 
-function show(io::IO, ABCresults::ABCSMCresults)
+function show(ABCresults::ABCSMCresults)
 
   upperci = zeros(Float64, size(ABCresults.parameters, 2))
   lowerci = zeros(Float64, size(ABCresults.parameters, 2))

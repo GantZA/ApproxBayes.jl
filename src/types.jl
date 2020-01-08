@@ -76,12 +76,14 @@ Create an ABCSMC type which will simulate data with sim_func. nparams is the num
 ...
 ## Arguments
 - `maxiterations = 10^5`: Maximum number of samples before the ABC algorithm terminates.
+- `maxpop = 3`: Maximum number of populations before the ABC algorithm terminates.
 - `constants = []`: Any constants needed to simulate from sim_func
 - `nparticles = 100`: Number of particles (ie samples) of ABC algorithm
 - `α = 0.3`: The αth quantile of population i is chosen as the ϵ for population i + 1
 - `ϵ1 = 10^5`: Starting ϵ for first ABC SMC populations
 - `convergence = 0.05`: ABC SMC stops when ϵ in population i + 1 is within 0.05 of populations i
 - `kernel = uniformkernel`: Parameter perturbation kernel, default is a uniform distribution. `gaussiankernel` is also an option that is already available in ApproxBayes.jl. Alternatively you can code up your own kernel function. See kernels.jl for examples.
+- `parallel_batch_size = 500`: Number of iterations done in parallel.
 ...
 """
 mutable struct ABCSMC <: ABCtype
@@ -98,6 +100,7 @@ mutable struct ABCSMC <: ABCtype
   α::Float64
   convergence::Float64
   kernel::Kernel
+  parallel_batch_size::Int64
 
   ABCSMC(sim_func::Function, nparams::Int64, ϵT::Float64, prior::Prior;
     maxiterations = 10^5,
@@ -107,9 +110,10 @@ mutable struct ABCSMC <: ABCtype
     α = 0.3,
     ϵ1 = 10000.0,
     convergence = 0.05,
-    kernel = ApproxBayes.uniformkernel
+    kernel = ApproxBayes.uniformkernel,
+    parallel_batch_size = 500
     ) =
-  new(sim_func, nparams, ϵ1, ϵT, nparticles, constants, maxiterations, maxpop, prior, α, convergence, kernel)
+  new(sim_func, nparams, ϵ1, ϵT, nparticles, constants, maxiterations, maxpop, prior, α, convergence, kernel, parallel_batch_size)
 
 end
 
