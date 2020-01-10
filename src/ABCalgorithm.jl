@@ -1,6 +1,4 @@
 #File which defined all the algorithms. Each algorithm takes in an ABCtype
-const printlock = SpinLock()
-
 """
     runabc(ABCsetup::ABCtype, targetdata; progress = false, verbose = false, parallel = true)
 
