@@ -193,14 +193,10 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
         js = wsample(1:ABCsetup.nparticles, weights, ABCsetup.parallel_batch_size)
         batch_particles = perturbparticles(allparticles[js, popnum], ABCsetup.kernel, ABCsetup.prior)
         prior_probs = map(x -> priorprob(x.params, ABCsetup.prior), batch_particles)
-        @assert all(prior_probs.!=0.0)
         batch_distvec = zeros(Float64, ABCsetup.parallel_batch_size)
-        accepted_inds = []
+        batch_inds = fill(false, ABCsetup.parallel_batch_size)
         @threads for ii = 1:ABCsetup.parallel_batch_size
-          if i[] > ABCsetup.nparticles
-            break
-          end
-          if its[] > pop_max_iter
+          if (i[] > ABCsetup.nparticles) | (its[] > pop_max_iter)
             break
           end
 
@@ -210,7 +206,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
           #if simulated data is less than target tolerance accept particle
           if batch_distvec[ii] < ϵ
             batch_particles[ii].distance = batch_distvec[ii]
-            push!(accepted_inds, ii)
+            batch_inds[ii] = true
             atomic_add!(i, 1)
             if progress
               next!(p)
@@ -219,8 +215,8 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
           atomic_add!(its,1)
         end
 
-        push!(particles, batch_particles[accepted_inds]...)
-        push!(distvec,  batch_distvec[accepted_inds]...)
+        push!(particles, batch_particles[batch_inds]...)
+        push!(distvec,  batch_distvec[batch_inds]...)
 
       end
     else
