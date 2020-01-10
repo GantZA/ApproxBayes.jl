@@ -9,8 +9,8 @@ Run ABC with ABCsetup defining the algorithm and inputs to algorithm, targetdata
 function runabc(ABCsetup::ABCRejection, targetdata; progress = false, verbose = false, parallel = false)
 
   #initalize array of particles
-  particlesall = Array{ParticleRejection}(undef, ABCsetup.maxiterations)
-
+  particles = Array{ParticleRejection}(undef, 0)
+  distvec = zeros(Float64, 0)
   if progress
     p = Progress(ABCsetup.nparticles, 1, "Running ABC rejection algorithm...", 30)
   end
@@ -18,39 +18,35 @@ function runabc(ABCsetup::ABCRejection, targetdata; progress = false, verbose = 
   if parallel
     Printf.@printf("Preparing to run in parallel on %i processors\n", nthreads())
 
-    particles = Array{ParticleRejection}(undef, ABCsetup.maxiterations)
-    distvec = zeros(Float64, ABCsetup.maxiterations) #store distances in an array
     i = Atomic{Int64}(0)
     cntr = Atomic{Int64}(0)
-    @threads for its = 1:ABCsetup.maxiterations
 
-      if i[] > ABCsetup.nparticles
-        break
-      end
-
+    while (i[] < ABCsetup.nparticles) & (cntr[] < ABCsetup.maxiterations)
+      batch_particles = Array{ParticleRejection}(undef, ABCsetup.parallel_batch_size)
+      batch_distvec = zeros(Float64, ABCsetup.parallel_batch_size)
+      batch_inds = fill(false, ABCsetup.parallel_batch_size)
       #get new proposal parameters
-      newparams = getproposal(ABCsetup.prior, ABCsetup.nparams)
-      #simulate with new parameters
-      dist, out = ABCsetup.simfunc(newparams, ABCsetup.constants, targetdata)
-      #keep track of all particles incase we don't reach nparticles with dist < ϵ
-      particlesall[its] = ParticleRejection(newparams, dist, out)
-
-      #if simulated data is less than target tolerance accept particle
-      if dist < ABCsetup.ϵ
-        particles[its] = ParticleRejection(newparams, dist, out)
-        distvec[its] = dist
-        atomic_add!(i, 1)
+      newparams = get_proposal(ABCsetup.prior, ABCsetup.nparams, ABCsetup.parallel_batch_size)
+      @threads for ii = 1:ABCsetup.parallel_batch_size
+        if (i[] > ABCsetup.nparticles) | (cntr[] > ABCsetup.maxiterations)
+          break
+        end
+        #simulate with new parameters
+        batch_distvec[ii], out = ABCsetup.simfunc(newparams[:, ii], ABCsetup.constants, targetdata)
+        #if simulated data is less than target tolerance accept particle
+        if batch_distvec[ii] < ABCsetup.ϵ
+          batch_particles[ii] = ParticleRejection(newparams[:, ii], batch_distvec[ii], 1)
+          batch_inds[ii] = true
+          atomic_add!(i, 1)
+        end
+        atomic_add!(cntr,1)
       end
-      atomic_add!(cntr,1)
 
+      push!(particles, batch_particles[batch_inds]...)
+      push!(distvec, batch_distvec[batch_inds]...)
     end
-    # Remove particles that are still #undef and corresponding distances
-    idx = [isassigned(particles,ii) for ii in eachindex(particles)]
-    particles = particles[idx]
-    distvec = distvec[idx]
-    i = length(particles)    # Number of accepted particles
+    i = i[]
     its = cntr[]    # Total number of simulations
-
   else
     Printf.@printf("Preparing to run in serial on %i processor\n", 1)
 
@@ -82,10 +78,9 @@ function runabc(ABCsetup::ABCRejection, targetdata; progress = false, verbose = 
   end
 
   if i < ABCsetup.nparticles
-    @warn "Only accepted $(i) particles with ϵ < $(ABCsetup.ϵ). \n\tYou may want to increase ϵ or increase maxiterations. \n\t Resorting to taking the $(ABCsetup.nparticles) particles with smallest distance"
-    d = map(p -> p.distance, particlesall)
-    particles = particlesall[sortperm(d)[1:ABCsetup.nparticles]]
-    distvec = map(p -> p.distance, particles)
+    @warn "Only accepted $(i) particles with ϵ < $(ABCsetup.ϵ). \n\tYou may want to increase ϵ or increase maxiterations. \n\t Returning accepted particles only"
+    particles = particles[1:i]
+    distvec = distvec[1:i]
   elseif i > ABCsetup.nparticles
     particles = particles[1:ABCsetup.nparticles]
     distvec = distvec[1:ABCsetup.nparticles]
