@@ -14,6 +14,23 @@ end
   newparams[i] = rand(x)
 end
 
+function get_proposal(p::Prior, nparams)
+  new_params = zeros(Float64, nparams)
+  for i=1:nparams
+    new_params[i] = rand(p.distribution[i])
+  end
+  return new_params
+end
+
+function get_proposal(p::Prior, nparams, nproposals)
+  new_params = Array{Float64}(undef, nproposals, nparams)
+  for i=1:nparams
+    new_params[:, i] = rand(p.distribution[i], nproposals)
+  end
+  return transpose(new_params)
+end
+
+
 function perturbparticle(particle, kernel::Kernel, prior::Prior)
   newparticle = copyparticle(particle)
   newparams = zeros(Float64, length(newparticle.params))
