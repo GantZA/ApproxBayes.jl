@@ -59,13 +59,15 @@ mutable struct ABCRejection <: ABCtype
   constants::Array{Any,1}
   maxiterations::Int64
   prior::Prior
+  parallel_batch_size::Int64
 
   ABCRejection(sim_func::Function, nparams::Int64, ϵ::Float64, prior::Prior;
     maxiterations = 10000,
     constants = [],
     nparticles = 100,
+    parallel_batch_size = 100,
     ) =
-  new(sim_func, nparams, ϵ, nparticles, constants, maxiterations, prior)
+  new(sim_func, nparams, ϵ, nparticles, constants, maxiterations, prior, parallel_batch_size)
 
 end
 
