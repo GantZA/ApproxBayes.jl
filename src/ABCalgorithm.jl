@@ -142,7 +142,8 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
   ABCrejresults = runabc(ABCRejection(ABCsetup.simfunc, ABCsetup.nparams,
                   ABCsetup.ϵ1, ABCsetup.prior; nparticles = ABCsetup.nparticles,
                   maxiterations = ABCsetup.maxiterations,
-                  constants = ABCsetup.constants), targetdata,
+                  constants = ABCsetup.constants,
+                  parallel_batch_size = ABCsetup.parallel_batch_size), targetdata,
                   progress = progress, parallel = parallel);
 
   allparticles = Array{ParticleSMC}(undef, ABCsetup.nparticles, ABCsetup.maxpop+1)
