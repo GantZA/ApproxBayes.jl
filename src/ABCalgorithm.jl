@@ -76,7 +76,9 @@ function runabc(ABCsetup::ABCRejection, targetdata; progress = false, verbose = 
   end
 
   if i < ABCsetup.nparticles
-    @warn "Only accepted $(i) particles with ϵ < $(ABCsetup.ϵ). \n\tYou may want to increase ϵ or increase maxiterations. \n\t Returning accepted particles only"
+    its = its[]
+    acceptance_rate = round(i/its, digits=4)
+    @warn "Only accepted $(i) particles out of $its simulations with ϵ < $(ABCsetup.ϵ) at an acceptance rate of $acceptance_rate. \n\tYou may want to increase ϵ or increase maxiterations. \n\t Returning accepted particles only"
     particles = particles[1:i]
     distvec = distvec[1:i]
   elseif i > ABCsetup.nparticles
