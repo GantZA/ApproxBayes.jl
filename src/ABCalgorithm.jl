@@ -146,8 +146,8 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
                   parallel_batch_size = ABCsetup.parallel_batch_size), targetdata,
                   progress = progress, parallel = parallel);
 
-  allparticles = Array{ParticleSMC}(undef, ABCsetup.nparticles, ABCsetup.maxpop+1)
-  allparticles[:, 1], weights = setupSMCparticles(ABCrejresults, ABCsetup)
+  allparticles = Vector{Vector{ParticleSMC}}(undef, ABCsetup.maxpop+1)
+  allparticles[1], weights = setupSMCparticles(ABCrejresults, ABCsetup)
   ABCsetup.kernel.kernel_parameters = ((maximum(ABCrejresults.parameters, dims = 1) - minimum(ABCrejresults.parameters, dims = 1)) ./2)[:]
   distvec = ABCrejresults.dist # set new ϵ to αth quantile
   ϵvec = [maximum(distvec)] #store epsilon values
@@ -191,7 +191,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
 
       while (its[] < pop_max_iter) & (i[] < ABCsetup.nparticles)
         js = wsample(1:ABCsetup.nparticles, weights, ABCsetup.parallel_batch_size)
-        batch_particles = perturbparticles(allparticles[js, popnum], ABCsetup.kernel, ABCsetup.prior)
+        batch_particles = perturbparticles(allparticles[popnum][js], ABCsetup.kernel, ABCsetup.prior)
         prior_probs = map(x -> priorprob(x.params, ABCsetup.prior), batch_particles)
         batch_distvec = zeros(Float64, ABCsetup.parallel_batch_size)
         batch_inds = fill(false, ABCsetup.parallel_batch_size)
@@ -261,16 +261,16 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
     println("\nAccepted $num_accepted particles out of $its simulations with ϵ < $ϵ at an acceptance rate of $acceptance_rate.\n")
     if num_accepted < ABCsetup.nparticles
       @warn "Did not accept enough particles, you may want to increase ϵ or increase maxiterations. \n\t Stopping ABC at previous population"
-      allparticles = allparticles[:, 1:popnum]
-      out = ABCSMCresults(allparticles[:, popnum], numsims, ABCsetup, ϵvec)
+      allparticles = allparticles[1:popnum]
+      out = ABCSMCresults(allparticles[popnum], numsims, ABCsetup, ϵvec)
       return out, allparticles
     else
-      allparticles[:, popnum + 1] = particles[1:ABCsetup.nparticles]
+      allparticles[popnum + 1] = particles[1:ABCsetup.nparticles]
       distvec = distvec[1:ABCsetup.nparticles]
     end
 
-    allparticles[:, popnum + 1], weights = smcweights(allparticles[:, popnum + 1], allparticles[:, popnum], ABCsetup.prior, ABCsetup.kernel)
-    ABCsetup.kernel.kernel_parameters = ABCsetup.kernel.calculate_kernel_parameters(allparticles[:, popnum + 1])
+    allparticles[popnum + 1], weights = smcweights(allparticles[popnum + 1], allparticles[popnum], ABCsetup.prior, ABCsetup.kernel)
+    ABCsetup.kernel.kernel_parameters = ABCsetup.kernel.calculate_kernel_parameters(allparticles[popnum + 1])
 
     if finalpop == true
       break
@@ -298,7 +298,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
     if verbose
       println("##################################################\n")
       println("Population $(popnum)")
-      show(ABCSMCresults(allparticles[:, popnum+1], numsims, ABCsetup, ϵvec))
+      show(ABCSMCresults(allparticles[popnum+1], numsims, ABCsetup, ϵvec))
       println("##################################################\n")
     end
   end
@@ -314,7 +314,7 @@ function runabc(ABCsetup::ABCSMC, targetdata; verbose = false, progress = false,
     end
   end
 
-  out = ABCSMCresults(allparticles[:, popnum+1], numsims, ABCsetup, ϵvec)
+  out = ABCSMCresults(allparticles[popnum+1], numsims, ABCsetup, ϵvec)
   return out, allparticles
 end
 
