@@ -34,9 +34,9 @@ end
 
 function setupSMCparticles(ABCrejresults::ABCrejectionresults, ABCsetup)
   #convert to SMC type after using ABC rejection
-  weights = ones(ABCsetup.nparticles)./ABCsetup.nparticles
-
-  particles = Array{ParticleSMC}(undef, ABCsetup.nparticles)
+  num_rejection_particles = length(ABCrejresults.particles)
+  weights = ones(num_rejection_particles)./num_rejection_particles
+  particles = Array{ParticleSMC}(undef, num_rejection_particles)
 
   for i in 1:length(particles)
     particles[i] = ParticleSMC(ABCrejresults.particles[i].params, weights[1], ABCrejresults.particles[i].distance,
